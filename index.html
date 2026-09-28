@@ -170,6 +170,7 @@
     font-family: inherit; font-size: .88rem; cursor: pointer;
   }
   #loadMore:hover { border-color: var(--accent); color: var(--accent); }
+  #loadMore[hidden] { display: none; }
   #empty { text-align: center; color: var(--text-dim); padding: 40px 0; font-size: .9rem; }
   #loading { text-align: center; color: var(--text-dim); padding: 40px 0; font-size: .9rem; }
 </style>
@@ -629,6 +630,10 @@
       renderGenrePanel(genreCounts(), e.target.value);
     });
     document.getElementById("loadMore").addEventListener("click", appendPage);
+    document.addEventListener("click", function (e) {
+      var pop = document.getElementById("genrePop");
+      if (pop.open && !pop.contains(e.target)) pop.open = false;
+    });
   }
 
   function updateStats() {
