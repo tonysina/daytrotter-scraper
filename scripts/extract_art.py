@@ -11,13 +11,17 @@ import time
 import base64
 from urllib.request import Request, urlopen
 
-from mutagen.id3 import ID3
-from PIL import Image
+from mutagen.id3 import ID3, ID3NoHeaderError
+from PIL import Image, ImageFile
 
 import _batch
 
 DB_PATH = "data/sessions.db"
 UA = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 daytrotter-archive-personal-use/1.0"
+# Some files' embedded art is short a few bytes at the source; the missing
+# pixels are invisible at thumbnail size, so decode what's there.
+ImageFile.LOAD_TRUNCATED_IMAGES = True
+
 RANGE_BYTES = 400_000
 THUMB_SIZE = 96
 JPEG_QUALITY = 60
@@ -38,7 +42,10 @@ def worker(item):
         req = Request(track_url, headers={"User-Agent": UA, "Range": f"bytes=0-{RANGE_BYTES}"})
         with urlopen(req, timeout=20) as resp:
             raw = resp.read()
-        apics = ID3(io.BytesIO(raw)).getall("APIC")
+        try:
+            apics = ID3(io.BytesIO(raw)).getall("APIC")
+        except ID3NoHeaderError:  # raw MP3 frames, no tag: nothing to extract
+            return "no_art", None
         if not apics:
             return "no_art", None
         img = Image.open(io.BytesIO(apics[0].data)).convert("RGB")
