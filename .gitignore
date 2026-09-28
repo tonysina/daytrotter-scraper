@@ -1,0 +1,12 @@
+# Scraped data & generated output -- regenerate with the scripts in scripts/
+# (also: this is scraped copyrighted content, not something to redistribute wholesale)
+data/
+Daytrotter Archive.html
+
+# OS / editor cruft
+.DS_Store
+__pycache__/
+*.pyc
+
+# Claude Code local state
+.claude/

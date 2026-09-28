@@ -1,0 +1,678 @@
+<title>Daytrotter Archive</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Special+Elite&family=Work+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<style>
+  /*
+    Deliberately single-theme: the Daytrotter portrait illustrations this
+    palette is drawn from (kraft-paper card, black ink line, flat marker
+    colors) are a light, paper-bound medium. A dark inversion would abandon
+    the thing that makes it recognizable, so the page always renders the
+    paper palette regardless of the viewer's system theme.
+  */
+  :root {
+    color-scheme: light;
+    --bg: #e7dcc0;
+    --surface: #faf5e6;
+    --surface-2: #f1e8d2;
+    --border: #cbb98a;
+    --border-strong: #a3895a;
+    --text: #241d13;
+    --text-dim: #6e5c3e;
+    --accent: #b5651d;
+    --accent-ink: #fff8ea;
+    --accent2: #a4405a;
+    --accent3: #56724f;
+    --accent4: #3f7089;
+    --shadow: 0 1px 2px rgba(40,30,10,.1);
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: "Work Sans", ui-sans-serif, system-ui, sans-serif;
+    padding-inline: 0;
+  }
+  a { color: inherit; }
+  .mono { font-family: "IBM Plex Mono", ui-monospace, monospace; font-variant-numeric: tabular-nums; }
+  .stamp { font-family: "Special Elite", "IBM Plex Mono", monospace; letter-spacing: .02em; }
+
+  .wrap { max-width: 920px; margin: 0 auto; padding-inline: 16px; }
+
+  header.top {
+    position: sticky;
+    top: env(safe-area-inset-top, 0px);
+    z-index: 20;
+    background: var(--bg);
+    border-bottom: 1px solid var(--border);
+    padding-block: 14px 10px;
+  }
+  .brand-row { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+  .brand { font-size: 1.5rem; font-weight: 400; }
+  .brand .tag { color: var(--accent); }
+  .stats { color: var(--text-dim); font-size: .78rem; margin-left: auto; text-align: right; line-height: 1.35; }
+  .stats b { color: var(--text); font-weight: 600; }
+
+  .searchbar { margin-top: 12px; display: flex; gap: 8px; }
+  .searchbar input[type=text] {
+    flex: 1; background: var(--surface); border: 1px solid var(--border-strong);
+    border-radius: 6px; padding: 9px 12px; color: var(--text); font-size: .95rem; font-family: inherit;
+  }
+  .searchbar input[type=text]:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
+  button.reset-btn {
+    background: var(--surface); border: 1px solid var(--border-strong); color: var(--text-dim);
+    border-radius: 6px; padding: 0 12px; font-size: .82rem; cursor: pointer; font-family: inherit;
+  }
+  button.reset-btn:hover { color: var(--text); border-color: var(--accent); }
+
+  .azbar {
+    margin-top: 10px;
+    display: flex; flex-wrap: wrap; gap: 3px;
+  }
+  .azbar button {
+    background: var(--surface); border: 1px solid var(--border); color: var(--text-dim);
+    border-radius: 4px; width: 24px; height: 24px; font-size: .72rem; cursor: pointer;
+    font-family: "IBM Plex Mono", monospace; padding: 0;
+  }
+  .azbar button:disabled { opacity: .3; cursor: default; }
+  .azbar button.active { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); font-weight: 600; }
+
+  .filters { margin-top: 10px; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+  .chip-sep { width: 1px; align-self: stretch; background: var(--border); margin-inline: 2px; }
+
+  details.genre-pop { position: relative; }
+  details.genre-pop > summary {
+    list-style: none; background: var(--surface); border: 1px solid var(--border-strong);
+    border-radius: 999px; padding: 5px 12px; font-size: .78rem; cursor: pointer; color: var(--text-dim);
+  }
+  details.genre-pop[open] > summary { color: var(--text); border-color: var(--accent); }
+  details.genre-pop > summary::-webkit-details-marker { display: none; }
+  .genre-panel {
+    position: absolute; top: calc(100% + 6px); left: 0; background: var(--surface);
+    border: 1px solid var(--border-strong); border-radius: 8px; box-shadow: var(--shadow);
+    padding: 10px; width: 240px; max-height: 280px; overflow-y: auto; z-index: 30;
+  }
+  .genre-panel input[type=text] {
+    width: 100%; background: var(--surface-2); border: 1px solid var(--border); border-radius: 5px;
+    padding: 5px 8px; color: var(--text); font-size: .8rem; margin-bottom: 8px; font-family: inherit;
+  }
+  .genre-item { display: flex; align-items: center; gap: 6px; font-size: .82rem; padding: 3px 0; }
+  .genre-item label { flex: 1; cursor: pointer; }
+  .genre-count { color: var(--text-dim); font-size: .72rem; }
+
+  select#sortSel {
+    background: var(--surface); border: 1px solid var(--border-strong); color: var(--text-dim);
+    border-radius: 999px; padding: 5px 10px; font-size: .78rem; font-family: inherit; cursor: pointer;
+  }
+
+  .enrich-note { margin-top: 8px; font-size: .72rem; color: var(--text-dim); display: flex; gap: 6px; align-items: center; }
+  .enrich-note .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent3); flex: none; }
+
+  main.wrap { padding-top: 14px; padding-bottom: 60px; }
+
+  .result-count { font-size: .8rem; color: var(--text-dim); margin-bottom: 10px; }
+  .result-count b { color: var(--text); }
+
+  ul#list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+
+  .artist-group { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+  .group-head { display: flex; align-items: center; gap: 12px; padding: 11px 14px; cursor: pointer; }
+  .group-head:hover { background: var(--surface-2); }
+  .group-name { font-weight: 600; font-size: .96rem; flex: 1; min-width: 0; }
+  .badges { display: inline-flex; gap: 5px; margin-left: 8px; vertical-align: middle; }
+  .badge {
+    display: inline-block; font-size: .66rem; padding: 1px 6px; border-radius: 4px;
+    background: var(--surface-2); color: var(--text-dim); border: 1px solid var(--border);
+    font-family: "IBM Plex Mono", monospace; text-transform: uppercase; letter-spacing: .03em;
+  }
+  .badge.sessions { color: var(--accent2); border-color: var(--accent2); }
+  .badge.genre { color: var(--accent3); border-color: var(--accent3); }
+  .group-meta { font-size: .78rem; color: var(--text-dim); white-space: nowrap; text-align: right; }
+  .chev { color: var(--text-dim); font-size: .7rem; transition: transform .15s ease; flex: none; }
+  .artist-group.open .chev { transform: rotate(90deg); }
+
+  .sessions-body { border-top: 1px solid var(--border); }
+  .session-block { padding: 12px 14px; border-bottom: 1px solid var(--border); display: flex; gap: 12px; }
+  .session-block:last-child { border-bottom: none; }
+  .session-thumb {
+    width: 64px; height: 64px; border-radius: 6px; object-fit: cover; flex: none;
+    border: 1px solid var(--border-strong); background: var(--surface-2);
+  }
+  .session-thumb.placeholder {
+    display: flex; align-items: center; justify-content: center;
+    font-family: "Special Elite", monospace; font-size: 1.5rem; color: var(--accent-ink);
+  }
+  .session-col { flex: 1; min-width: 0; }
+  .session-row1 { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+  .session-date { font-weight: 600; font-size: .86rem; }
+  .session-link { font-size: .72rem; color: var(--text-dim); text-decoration: none; }
+  .session-link:hover { color: var(--accent); }
+  .zip-btn {
+    margin-left: auto; font-size: .72rem; color: var(--accent); background: none;
+    border: 1px solid var(--accent); border-radius: 5px; padding: 2px 9px; cursor: pointer; font-family: inherit;
+  }
+  .zip-btn:hover { background: var(--accent); color: var(--accent-ink); }
+  .zip-btn:disabled { opacity: .55; cursor: default; }
+
+  .track-row { display: flex; align-items: baseline; gap: 8px; padding: 4px 0; font-size: .86rem; }
+  .track-num { color: var(--text-dim); width: 1.4em; flex: none; }
+  .track-title {
+    flex: 1; min-width: 0; color: var(--text); text-decoration: underline;
+    text-decoration-color: var(--border-strong); text-underline-offset: 2px;
+  }
+  .track-title:hover { color: var(--accent); text-decoration-color: var(--accent); }
+  .track-title.disabled { color: var(--text-dim); cursor: default; text-decoration: none; pointer-events: none; }
+  .track-status { font-size: .7rem; color: var(--text-dim); white-space: nowrap; }
+
+  #loadMore {
+    display: block; width: 100%; margin-top: 16px; padding: 11px; background: var(--surface);
+    border: 1px solid var(--border-strong); border-radius: 8px; color: var(--text);
+    font-family: inherit; font-size: .88rem; cursor: pointer;
+  }
+  #loadMore:hover { border-color: var(--accent); color: var(--accent); }
+  #empty { text-align: center; color: var(--text-dim); padding: 40px 0; font-size: .9rem; }
+  #loading { text-align: center; color: var(--text-dim); padding: 40px 0; font-size: .9rem; }
+</style>
+
+<header class="top">
+  <div class="wrap">
+    <div class="brand-row">
+      <div class="brand stamp">Daytrotter <span class="tag">Archive</span></div>
+      <div class="stats" id="statsBox">loading&hellip;</div>
+    </div>
+    <div class="searchbar">
+      <input type="text" id="q" placeholder="Search artist&hellip;" autocomplete="off">
+      <button class="reset-btn" id="resetBtn">Reset</button>
+    </div>
+    <div class="azbar" id="azBar"></div>
+    <div class="filters" id="filterRow2">
+      <details class="genre-pop" id="genrePop">
+        <summary>Genre <span id="genreSelCount"></span></summary>
+        <div class="genre-panel">
+          <input type="text" id="genreFilterInput" placeholder="Filter genres&hellip;">
+          <div id="genreList"></div>
+        </div>
+      </details>
+      <div class="chip-sep"></div>
+      <select id="sortSel">
+        <option value="artist">Sort: Artist A&ndash;Z</option>
+        <option value="newest">Sort: Newest session</option>
+        <option value="oldest">Sort: Oldest session</option>
+        <option value="tracks">Sort: Most tracks</option>
+      </select>
+    </div>
+    <div class="enrich-note" id="enrichNote" hidden>
+      <span class="dot"></span>
+      <span></span>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+  <div id="loading">Loading session archive&hellip;</div>
+  <div class="result-count" id="resultCount" hidden></div>
+  <ul id="list" hidden></ul>
+  <button id="loadMore" hidden>Show 60 more</button>
+  <div id="empty" hidden>No artists match those filters.</div>
+</main>
+
+<script>
+(function () {
+  "use strict";
+
+  var STATE = {
+    sessions: [],
+    artists: {},
+    art: {},
+    groups: [],
+    genreList: [],
+    filtered: [],
+    shown: 0,
+    PAGE: 60,
+    letter: null,
+    genres: new Set(),
+    q: "",
+    sort: "artist",
+  };
+
+  function el(tag, cls, html) {
+    var e = document.createElement(tag);
+    if (cls) e.className = cls;
+    if (html !== undefined) e.innerHTML = html;
+    return e;
+  }
+
+  function escapeHtml(s) {
+    return String(s).replace(/[&<>"']/g, function (c) {
+      return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
+    });
+  }
+
+  function sanitizeFile(s) {
+    return String(s).replace(/[\/\\:*?"<>|]/g, "").replace(/\s+/g, " ").trim();
+  }
+
+  function datePart(sess) {
+    return sess.iso || (sess.y ? String(sess.y) : "undated");
+  }
+
+  function sessionFolderName(group, sess) {
+    return sanitizeFile("Daytrotter - " + group.a + " - " + datePart(sess));
+  }
+
+  function trackFilename(group, sess, title) {
+    return sessionFolderName(group, sess) + " - " + sanitizeFile(title) + ".mp3";
+  }
+
+  // Leading articles don't count for alphabetization or the A-Z index:
+  // "The Rapture" files under R, not T.
+  function sortKey(name) {
+    return name.replace(/^(the|an?)\s+/i, "").trim();
+  }
+
+  function buildGroups() {
+    var byArtist = {};
+    STATE.sessions.forEach(function (s) {
+      (byArtist[s.a] = byArtist[s.a] || []).push(s);
+    });
+    STATE.groups = Object.keys(byArtist).map(function (a) {
+      var sessions = byArtist[a].slice().sort(function (x, y) { return (x.y || 0) - (y.y || 0); });
+      var years = sessions.map(function (s) { return s.y; }).filter(Boolean);
+      var totalTracks = sessions.reduce(function (n, s) { return n + s.tr.length; }, 0);
+      return {
+        a: a,
+        sortKey: sortKey(a),
+        sessions: sessions,
+        minY: years.length ? Math.min.apply(null, years) : null,
+        maxY: years.length ? Math.max.apply(null, years) : null,
+        totalTracks: totalTracks,
+      };
+    });
+  }
+
+  function buildAzBar() {
+    var present = new Set();
+    STATE.groups.forEach(function (g) {
+      var c = g.sortKey.charAt(0).toUpperCase();
+      present.add(/[A-Z]/.test(c) ? c : "#");
+    });
+    var box = document.getElementById("azBar");
+    box.innerHTML = "";
+    "#ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("").forEach(function (letter) {
+      var b = el("button", null, letter);
+      if (!present.has(letter)) { b.disabled = true; }
+      b.addEventListener("click", function () {
+        STATE.letter = (STATE.letter === letter) ? null : letter;
+        syncAz(); render();
+      });
+      b.dataset.letter = letter;
+      box.appendChild(b);
+    });
+  }
+
+  function syncAz() {
+    document.querySelectorAll("#azBar button").forEach(function (b) {
+      b.classList.toggle("active", STATE.letter === b.dataset.letter);
+    });
+  }
+
+  function buildGenreList() {
+    var counts = genreCounts();
+    STATE.genreList = Object.keys(counts).sort(function (a, b) { return counts[b] - counts[a]; });
+    renderGenrePanel(counts);
+  }
+
+  function genreCounts() {
+    var counts = {};
+    Object.keys(STATE.artists).forEach(function (a) {
+      STATE.artists[a].forEach(function (g) { counts[g] = (counts[g] || 0) + 1; });
+    });
+    return counts;
+  }
+
+  function renderGenrePanel(counts, filterText) {
+    var box = document.getElementById("genreList");
+    box.innerHTML = "";
+    var ft = (filterText || "").toLowerCase();
+    STATE.genreList.filter(function (g) { return g.toLowerCase().indexOf(ft) !== -1; })
+      .forEach(function (g) {
+        var row = el("div", "genre-item");
+        var id = "genre-" + g.replace(/[^a-z0-9]/gi, "_");
+        row.innerHTML = '<input type="checkbox" id="' + id + '">' +
+          '<label for="' + id + '">' + escapeHtml(g) + '</label>' +
+          '<span class="genre-count">' + counts[g] + '</span>';
+        var cb = row.querySelector("input");
+        cb.checked = STATE.genres.has(g);
+        cb.addEventListener("change", function () {
+          if (cb.checked) STATE.genres.add(g); else STATE.genres.delete(g);
+          updateGenreSummary();
+          render();
+        });
+        box.appendChild(row);
+      });
+  }
+
+  function updateGenreSummary() {
+    var n = STATE.genres.size;
+    document.getElementById("genreSelCount").textContent = n ? "(" + n + ")" : "";
+  }
+
+  function artistGenres(name) { return STATE.artists[name] || []; }
+
+  function matchesGroup(g) {
+    if (STATE.letter !== null) {
+      var c = g.sortKey.charAt(0).toUpperCase();
+      var gl = /[A-Z]/.test(c) ? c : "#";
+      if (gl !== STATE.letter) return false;
+    }
+    if (STATE.genres.size) {
+      var genres = artistGenres(g.a);
+      var ok = false;
+      for (var i = 0; i < genres.length; i++) if (STATE.genres.has(genres[i])) { ok = true; break; }
+      if (!ok) return false;
+    }
+    if (STATE.q && g.a.toLowerCase().indexOf(STATE.q) === -1) return false;
+    return true;
+  }
+
+  function sortGroups(arr) {
+    var copy = arr.slice();
+    switch (STATE.sort) {
+      case "newest":
+        copy.sort(function (a, b) { return (b.maxY || 0) - (a.maxY || 0) || a.sortKey.localeCompare(b.sortKey); });
+        break;
+      case "oldest":
+        copy.sort(function (a, b) { return (a.minY || 0) - (b.minY || 0) || a.sortKey.localeCompare(b.sortKey); });
+        break;
+      case "tracks":
+        copy.sort(function (a, b) { return b.totalTracks - a.totalTracks || a.sortKey.localeCompare(b.sortKey); });
+        break;
+      default:
+        copy.sort(function (a, b) { return a.sortKey.localeCompare(b.sortKey); });
+    }
+    return copy;
+  }
+
+  function render() {
+    STATE.filtered = sortGroups(STATE.groups.filter(matchesGroup));
+    STATE.shown = 0;
+    document.getElementById("list").innerHTML = "";
+    var count = STATE.filtered.length;
+    document.getElementById("resultCount").hidden = false;
+    document.getElementById("resultCount").innerHTML =
+      "<b>" + count.toLocaleString() + "</b> artist" + (count === 1 ? "" : "s") +
+      (count !== STATE.groups.length ? " matching" : "");
+    document.getElementById("empty").hidden = count !== 0;
+    document.getElementById("list").hidden = count === 0;
+    appendPage();
+  }
+
+  // Plain browser download: works because this page is served locally
+  // (see README) with no cross-origin restrictions. Opening the same file
+  // inside a claude.ai Artifact preview blocks cross-origin fetch, so these
+  // calls fail there -- run it via `python3 -m http.server` instead.
+  function saveBlob(blob, filename) {
+    var a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(function () { URL.revokeObjectURL(a.href); }, 30000);
+  }
+
+  async function downloadTrack(url, filename, statusEl) {
+    statusEl.textContent = "downloading…";
+    try {
+      var res = await fetch(url);
+      if (!res.ok) throw new Error("http " + res.status);
+      saveBlob(await res.blob(), filename);
+      statusEl.textContent = "";
+    } catch (e) {
+      statusEl.textContent = "failed — run via local server, see README";
+    }
+  }
+
+  async function downloadSessionZip(group, sess, btn) {
+    var original = btn.textContent;
+    btn.disabled = true;
+    try {
+      var zip = new JSZip();
+      var folder = zip.folder(sessionFolderName(group, sess));
+      var got = 0;
+      for (var i = 0; i < sess.tr.length; i++) {
+        var title = sess.tr[i][0], url = sess.tr[i][1];
+        if (!url) continue;
+        btn.textContent = "Fetching " + (i + 1) + "/" + sess.tr.length + "…";
+        var res = await fetch(url);
+        if (!res.ok) continue;
+        folder.file(trackFilename(group, sess, title), await res.blob());
+        got++;
+      }
+      if (!got) throw new Error("no tracks fetched");
+      btn.textContent = "Zipping…";
+      saveBlob(await zip.generateAsync({ type: "blob" }), sessionFolderName(group, sess) + ".zip");
+      btn.textContent = original;
+    } catch (e) {
+      btn.textContent = "Failed — run via local server, see README";
+      setTimeout(function () { btn.textContent = original; }, 3000);
+    } finally {
+      btn.disabled = false;
+    }
+  }
+
+  var ACCENT_ROTATION = ["--accent", "--accent2", "--accent3", "--accent4"];
+  function monogramColor(name) {
+    var sum = 0;
+    for (var i = 0; i < name.length; i++) sum += name.charCodeAt(i);
+    return "var(" + ACCENT_ROTATION[sum % ACCENT_ROTATION.length] + ")";
+  }
+
+  // Cover art loads in the background after first paint (it's tens of MB
+  // across several files); sessions expanded before it arrives get a
+  // placeholder that's swapped for the real thumbnail once ready.
+  var pendingThumbs = {};
+
+  function realImg(group, sess, dataUri, placeholder) {
+    var img = el("img", "session-thumb");
+    img.alt = group.a;
+    img.src = dataUri;
+    img.addEventListener("error", function () { img.replaceWith(placeholder); }, { once: true });
+    return img;
+  }
+
+  function makeThumb(group, sess) {
+    var placeholder = el("div", "session-thumb placeholder", escapeHtml(group.a.trim().charAt(0).toUpperCase() || "?"));
+    placeholder.style.background = monogramColor(group.a);
+    var dataUri = STATE.art[sess.u];
+    if (dataUri) return realImg(group, sess, dataUri, placeholder);
+    (pendingThumbs[sess.u] = pendingThumbs[sess.u] || []).push({ group: group, sess: sess, el: placeholder });
+    return placeholder;
+  }
+
+  function upgradePendingThumbs() {
+    Object.keys(pendingThumbs).forEach(function (url) {
+      var dataUri = STATE.art[url];
+      if (!dataUri) return;
+      pendingThumbs[url].forEach(function (p) {
+        if (p.el.isConnected) p.el.replaceWith(realImg(p.group, p.sess, dataUri, p.el));
+      });
+      delete pendingThumbs[url];
+    });
+  }
+
+  function loadArt() {
+    // Standalone build (see build_standalone.py) embeds art directly --
+    // nothing to fetch. Served mode (Artifact / local http server) loads
+    // it in chunks to stay under the Artifact's 16MB-per-file cap.
+    var embeddedArt = document.getElementById("__ART__");
+    if (embeddedArt) { STATE.art = JSON.parse(embeddedArt.textContent); upgradePendingThumbs(); return; }
+    fetch("data/images-manifest.json").then(function (r) { return r.json(); }).then(function (manifest) {
+      var chunkIdx = 0;
+      function loadNext() {
+        if (chunkIdx >= manifest.chunks) return;
+        var i = chunkIdx++;
+        fetch("data/images-" + i + ".json").then(function (r) { return r.json(); }).then(function (chunk) {
+          Object.assign(STATE.art, chunk);
+          upgradePendingThumbs();
+          loadNext();
+        }).catch(function () { loadNext(); });
+      }
+      loadNext();
+    }).catch(function () { /* cover art is a nice-to-have; browsing still works without it */ });
+  }
+
+  function sessionBlock(group, sess) {
+    var block = el("div", "session-block");
+    block.appendChild(makeThumb(group, sess));
+
+    var col = el("div", "session-col");
+    var row1 = el("div", "session-row1");
+    row1.innerHTML =
+      '<span class="session-date mono">' + escapeHtml(sess.d || "") + '</span>' +
+      '<a class="session-link" href="' + sess.u + '" target="_blank" rel="noopener">Original page ↗</a>';
+    var zipBtn = el("button", "zip-btn", "Download whole session (.zip)");
+    zipBtn.addEventListener("click", function () { downloadSessionZip(group, sess, zipBtn); });
+    row1.appendChild(zipBtn);
+    col.appendChild(row1);
+
+    sess.tr.forEach(function (t, i) {
+      var title = t[0], url = t[1];
+      var row = el("div", "track-row");
+      var num = el("span", "track-num mono", String(i + 1));
+      var status = el("span", "track-status");
+      if (url) {
+        var a = el("a", "track-title", escapeHtml(title));
+        a.href = url;
+        a.title = "Click to download — cmd/ctrl-click to open in a new tab instead";
+        a.addEventListener("click", function (e) {
+          e.preventDefault();
+          downloadTrack(url, trackFilename(group, sess, title), status);
+        });
+        row.appendChild(num); row.appendChild(a); row.appendChild(status);
+      } else {
+        row.appendChild(num);
+        row.appendChild(el("span", "track-title disabled", escapeHtml(title)));
+        status.textContent = "unavailable";
+        row.appendChild(status);
+      }
+      col.appendChild(row);
+    });
+
+    block.appendChild(col);
+    return block;
+  }
+
+  function groupItem(g) {
+    var li = el("li", "artist-group");
+    var head = el("div", "group-head");
+    var badges = '<span class="badges">';
+    if (g.sessions.length > 1) badges += '<span class="badge sessions">' + g.sessions.length + ' sessions</span>';
+    var genres = artistGenres(g.a);
+    if (genres.length) badges += '<span class="badge genre">' + escapeHtml(genres[0]) + '</span>';
+    badges += '</span>';
+    var yearLabel = g.minY ? (g.minY === g.maxY ? g.minY : g.minY + '–' + g.maxY) : '';
+    head.innerHTML =
+      '<span class="chev">&#9656;</span>' +
+      '<span class="group-name">' + escapeHtml(g.a) + badges + '</span>' +
+      '<span class="group-meta mono">' + yearLabel + ' &middot; <span>' + g.totalTracks + '</span> tr</span>';
+
+    var body = el("div", "sessions-body");
+    body.hidden = true;
+    var built = false;
+
+    head.addEventListener("click", function () {
+      var willOpen = body.hidden;
+      if (willOpen && !built) {
+        g.sessions.slice().sort(function (a, b) { return (b.y || 0) - (a.y || 0); })
+          .forEach(function (s) { body.appendChild(sessionBlock(g, s)); });
+        built = true;
+      }
+      body.hidden = !willOpen;
+      li.classList.toggle("open", willOpen);
+    });
+
+    li.appendChild(head);
+    li.appendChild(body);
+    return li;
+  }
+
+  function appendPage() {
+    var list = document.getElementById("list");
+    var next = STATE.filtered.slice(STATE.shown, STATE.shown + STATE.PAGE);
+    next.forEach(function (g) { list.appendChild(groupItem(g)); });
+    STATE.shown += next.length;
+    var more = document.getElementById("loadMore");
+    more.hidden = STATE.shown >= STATE.filtered.length;
+  }
+
+  function initFilters() {
+    document.getElementById("q").addEventListener("input", function (e) {
+      STATE.q = e.target.value.trim().toLowerCase();
+      if (STATE.q && STATE.letter !== null) { STATE.letter = null; syncAz(); }
+      render();
+    });
+    document.getElementById("resetBtn").addEventListener("click", function () {
+      STATE.genres.clear(); STATE.q = ""; STATE.letter = null;
+      document.getElementById("q").value = "";
+      document.getElementById("sortSel").value = "artist";
+      STATE.sort = "artist";
+      updateGenreSummary();
+      renderGenrePanel(genreCounts());
+      syncAz();
+      render();
+    });
+    document.getElementById("sortSel").addEventListener("change", function (e) {
+      STATE.sort = e.target.value; render();
+    });
+    document.getElementById("genreFilterInput").addEventListener("input", function (e) {
+      renderGenrePanel(genreCounts(), e.target.value);
+    });
+    document.getElementById("loadMore").addEventListener("click", appendPage);
+  }
+
+  function updateStats() {
+    var totalTracks = STATE.sessions.reduce(function (n, s) { return n + s.tr.length; }, 0);
+    document.getElementById("statsBox").innerHTML =
+      "<b>" + STATE.sessions.length.toLocaleString() + "</b> sessions &middot; " +
+      "<b>" + STATE.groups.length.toLocaleString() + "</b> artists &middot; " +
+      "<b>" + totalTracks.toLocaleString() + "</b> tracks<br>2006&ndash;2026, scraped from pastemagazine.com/daytrotter";
+    var tagged = Object.keys(STATE.artists).length;
+    var note = document.getElementById("enrichNote");
+    if (tagged < STATE.groups.length) {
+      note.hidden = false;
+      note.querySelector("span:last-child").textContent =
+        "Genre tags (via MusicBrainz) present for " + tagged.toLocaleString() + " of " + STATE.groups.length.toLocaleString() +
+        " artists so far — more are being added.";
+    }
+  }
+
+  // Standalone build embeds the data as inert JSON script blocks (see
+  // build_standalone.py) so opening the file needs no server, and so the
+  // browser JSON.parse()s it instead of parsing it as JS source -- much
+  // faster for tens of MB. Otherwise fetch it (Artifact / local http server).
+  var embeddedData = document.getElementById("__DATA__");
+  var dataPromise = embeddedData
+    ? Promise.resolve(JSON.parse(embeddedData.textContent))
+    : Promise.all([
+        fetch("data/sessions.json").then(function (r) { return r.json(); }),
+        fetch("data/artists.json").then(function (r) { return r.json(); }),
+      ]).then(function (r) { return { sessions: r[0], artists: r[1] }; });
+
+  dataPromise.then(function (data) {
+    STATE.sessions = data.sessions;
+    STATE.artists = data.artists;
+    document.getElementById("loading").hidden = true;
+    buildGroups();
+    buildAzBar();
+    buildGenreList();
+    updateGenreSummary();
+    updateStats();
+    initFilters();
+    render();
+    loadArt();
+  }).catch(function (err) {
+    document.getElementById("loading").textContent = "Failed to load session data: " + err;
+  });
+})();
+</script>
