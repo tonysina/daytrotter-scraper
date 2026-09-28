@@ -108,6 +108,12 @@ def parse_page(url, html):
     return row
 
 
+def failed(url, error):
+    return {"url": url, "status": "error", "error": error, "tracks": [],
+            "artist": None, "artist_slug": None, "subtitle": None, "date_raw": None,
+            "location": None, "image_url": None}
+
+
 def worker(url):
     try:
         req = Request(url, headers={"User-Agent": UA})
@@ -115,13 +121,9 @@ def worker(url):
             html = resp.read().decode("utf-8", errors="replace")
         return parse_page(url, html)
     except (HTTPError, URLError, TimeoutError) as e:
-        return {"url": url, "status": "error", "error": str(e), "tracks": [],
-                "artist": None, "artist_slug": None, "subtitle": None, "date_raw": None,
-                "location": None, "image_url": None}
+        return failed(url, str(e))
     except Exception as e:
-        return {"url": url, "status": "error", "error": f"parse:{e}", "tracks": [],
-                "artist": None, "artist_slug": None, "subtitle": None, "date_raw": None,
-                "location": None, "image_url": None}
+        return failed(url, f"parse:{e}")
 
 
 def save(conn, url, row):

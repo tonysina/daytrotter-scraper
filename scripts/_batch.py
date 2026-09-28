@@ -47,12 +47,16 @@ def run(conn, table, key_col, items, key_fn, worker_fn, save_fn, args,
         todo = todo[:args.limit]
     print(f"total={len(items)} already_done={len(done)} todo={len(todo)}", flush=True)
 
-    # A rate-limited API (sleep_after > 0) must stay serial; a thread pool
-    # would fire requests concurrently regardless of the per-item sleep.
-    workers = 1 if sleep_after else args.workers
-    with cf.ThreadPoolExecutor(max_workers=workers) as ex:
+    # A rate-limited API (sleep_after > 0) runs in this thread, one request
+    # per sleep. Even a 1-worker pool runs ahead of this loop: ex.map fires
+    # requests back to back while the sleep below only paces the saves.
+    if sleep_after:
+        results = map(worker_fn, todo)
+    else:
+        ex = cf.ThreadPoolExecutor(max_workers=args.workers)
         results = ex.map(worker_fn, todo)
-        t0 = time.time()
+    t0 = time.time()
+    try:
         for i, (item, result) in enumerate(zip(todo, results), 1):
             save_fn(conn, item, result)
             if i % 50 == 0:
@@ -62,5 +66,8 @@ def run(conn, table, key_col, items, key_fn, worker_fn, save_fn, args,
                 print(f"{i}/{len(todo)} done, {rate:.1f}/s, ~{remaining/60:.1f}min left", flush=True)
             if sleep_after:
                 time.sleep(sleep_after)
+    finally:
+        if not sleep_after:
+            ex.shutdown(cancel_futures=True)
     conn.commit()
     print("done", flush=True)

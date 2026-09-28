@@ -1,15 +1,7 @@
 #!/usr/bin/env python3
-"""Export sessions.db for the browser page, in two forms, from one pass
-over the data (no re-reading from disk between them):
-
-  data/sessions.json + data/artists.json + data/images-manifest.json +
-  data/images-N.json   - fetched at runtime by index.html when it's served
-     (claude.ai Artifact or a local http server); art is chunked to stay
-     under the 16MB-per-file cap a published Artifact enforces.
-
-  "Daytrotter Archive.html" - index.html with all of the above baked in as
-     inert JSON <script> blocks, so it needs no server at all: double-click
-     and open. No cap to chunk against since it's just a local file.
+"""Build "Daytrotter Archive.html" from sessions.db: index.html with the
+sessions, genre tags and cover art baked in as inert JSON <script> blocks,
+so it needs no server at all -- double-click and open.
 
 De-dupes (artist, date_raw) pairs, keeping the row with more tracks.
 """
@@ -79,37 +71,9 @@ sessions.sort(key=lambda s: (s["a"].lower(), s["y"] or 0))
 artist_rows = conn.execute("SELECT artist, genres FROM artists WHERE status='ok'").fetchall()
 artists = {r["artist"]: json.loads(r["genres"]) for r in artist_rows if json.loads(r["genres"] or "[]")}
 
-with open("data/sessions.json", "w") as f:
-    json.dump(sessions, f, separators=(",", ":"))
-with open("data/artists.json", "w") as f:
-    json.dump(artists, f, separators=(",", ":"))
-
-# Cover art: extracted from each session's own ID3 tag (see extract_art.py),
-# embedded as data: URIs so the sandboxed Artifact preview can render them
-# without hotlinking img.pastemagazine.com (which it can't reach).
+# Cover art: extracted from each session's own ID3 tag (see extract_art.py)
+# and embedded as data: URIs, so nothing is hotlinked from img.pastemagazine.com.
 art_rows = conn.execute("SELECT url, data_b64 FROM art WHERE status='ok'").fetchall()
-CHUNK_BUDGET = 14 * 1024 * 1024
-chunks = []
-current, current_size = {}, 0
-for r in art_rows:
-    uri = f"data:image/jpeg;base64,{r['data_b64']}"
-    entry_size = len(r["url"]) + len(uri) + 8
-    if current and current_size + entry_size > CHUNK_BUDGET:
-        chunks.append(current)
-        current, current_size = {}, 0
-    current[r["url"]] = uri
-    current_size += entry_size
-if current:
-    chunks.append(current)
-
-for i, chunk in enumerate(chunks):
-    with open(f"data/images-{i}.json", "w") as f:
-        json.dump(chunk, f, separators=(",", ":"))
-with open("data/images-manifest.json", "w") as f:
-    json.dump({"chunks": len(chunks), "count": len(art_rows)}, f)
-
-# Standalone build: same sessions/artists/art already computed above, no
-# separate script re-reading them from disk or re-querying the DB.
 art_all = {r["url"]: f"data:image/jpeg;base64,{r['data_b64']}" for r in art_rows}
 
 
@@ -129,7 +93,7 @@ with open("Daytrotter Archive.html", "w") as f:
 print(f"sessions: {len(sessions)}")
 print(f"artists with genre data: {len(artists)}")
 print(f"iso date coverage: {sum(1 for s in sessions if s['iso'])}/{len(sessions)}")
-print(f"cover art: {len(art_rows)} images in {len(chunks)} chunk file(s)")
+print(f"cover art: {len(art_rows)} images")
 years = [s["y"] for s in sessions if s["y"]]
 print("year range:", min(years), "-", max(years))
 print(f'standalone: "Daytrotter Archive.html" ({os.path.getsize("Daytrotter Archive.html")/1024/1024:.1f} MB)')

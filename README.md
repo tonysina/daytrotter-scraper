@@ -40,7 +40,7 @@ scripts/discover_urls.py     crawls Paste's sitemap for every session URL (the s
 scripts/scrape_sessions.py   scrapes each session page (artist, date, tracklist, mp3 URLs)
 scripts/extract_art.py       ranged-fetches one track per session, pulls the ID3 cover art
 scripts/enrich_genres.py     looks up each artist's genre tags on MusicBrainz (1 req/sec, be polite)
-scripts/export_json.py       exports everything to JSON + builds the standalone HTML page
+scripts/export_json.py       builds the standalone HTML page, with everything embedded
 scripts/_batch.py            shared plumbing the three scrapers above all use
 ```
 

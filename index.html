@@ -408,10 +408,8 @@
     appendPage();
   }
 
-  // Plain browser download: works because this page is served locally
-  // (see README) with no cross-origin restrictions. Opening the same file
-  // inside a claude.ai Artifact preview blocks cross-origin fetch, so these
-  // calls fail there -- run it via `python3 -m http.server` instead.
+  // Plain browser download, straight from the double-clicked file: the audio
+  // host sends Access-Control-Allow-Origin: *, so fetch() from file:// works.
   function saveBlob(blob, filename) {
     var a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
@@ -430,7 +428,7 @@
       saveBlob(await res.blob(), filename);
       statusEl.textContent = "";
     } catch (e) {
-      statusEl.textContent = "failed — run via local server, see README";
+      statusEl.textContent = "download failed, try again";
     }
   }
 
@@ -455,7 +453,7 @@
       saveBlob(await zip.generateAsync({ type: "blob" }), sessionFolderName(group, sess) + ".zip");
       btn.textContent = original;
     } catch (e) {
-      btn.textContent = "Failed — run via local server, see README";
+      btn.textContent = "Download failed, try again";
       setTimeout(function () { btn.textContent = original; }, 3000);
     } finally {
       btn.disabled = false;
@@ -503,24 +501,9 @@
   }
 
   function loadArt() {
-    // Standalone build (see build_standalone.py) embeds art directly --
-    // nothing to fetch. Served mode (Artifact / local http server) loads
-    // it in chunks to stay under the Artifact's 16MB-per-file cap.
+    // Cover art is embedded by export_json.py, parsed after the list is drawn
     var embeddedArt = document.getElementById("__ART__");
-    if (embeddedArt) { STATE.art = JSON.parse(embeddedArt.textContent); upgradePendingThumbs(); return; }
-    fetch("data/images-manifest.json").then(function (r) { return r.json(); }).then(function (manifest) {
-      var chunkIdx = 0;
-      function loadNext() {
-        if (chunkIdx >= manifest.chunks) return;
-        var i = chunkIdx++;
-        fetch("data/images-" + i + ".json").then(function (r) { return r.json(); }).then(function (chunk) {
-          Object.assign(STATE.art, chunk);
-          upgradePendingThumbs();
-          loadNext();
-        }).catch(function () { loadNext(); });
-      }
-      loadNext();
-    }).catch(function () { /* cover art is a nice-to-have; browsing still works without it */ });
+    if (embeddedArt) { STATE.art = JSON.parse(embeddedArt.textContent); upgradePendingThumbs(); }
   }
 
   function sessionBlock(group, sess) {
@@ -648,21 +631,17 @@
       note.hidden = false;
       note.querySelector("span:last-child").textContent =
         "Genre tags (via MusicBrainz) present for " + tagged.toLocaleString() + " of " + STATE.groups.length.toLocaleString() +
-        " artists so far — more are being added.";
+        " artists; the rest aren't on MusicBrainz or haven't been looked up yet.";
     }
   }
 
-  // Standalone build embeds the data as inert JSON script blocks (see
-  // build_standalone.py) so opening the file needs no server, and so the
-  // browser JSON.parse()s it instead of parsing it as JS source -- much
-  // faster for tens of MB. Otherwise fetch it (Artifact / local http server).
+  // export_json.py embeds the data as inert JSON script blocks, so the built
+  // file opens with no server, and JSON.parse() is much faster than parsing
+  // tens of MB as JS source. This template on its own has no data.
   var embeddedData = document.getElementById("__DATA__");
   var dataPromise = embeddedData
     ? Promise.resolve(JSON.parse(embeddedData.textContent))
-    : Promise.all([
-        fetch("data/sessions.json").then(function (r) { return r.json(); }),
-        fetch("data/artists.json").then(function (r) { return r.json(); }),
-      ]).then(function (r) { return { sessions: r[0], artists: r[1] }; });
+    : Promise.reject('no data in this file; open "Daytrotter Archive.html" (built by scripts/export_json.py)');
 
   dataPromise.then(function (data) {
     STATE.sessions = data.sessions;

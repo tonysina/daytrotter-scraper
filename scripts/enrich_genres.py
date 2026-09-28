@@ -14,7 +14,7 @@ from urllib.request import Request, urlopen
 import _batch
 
 DB_PATH = "data/sessions.db"
-UA = "daytrotter-personal-archive/1.0 (personal use, contact: artonsina@gmail.com)"
+UA = "daytrotter-personal-archive/1.0 ( https://github.com/tonysina/daytrotter-scraper )"
 MB_URL = "https://musicbrainz.org/ws/2/artist/"
 
 SCHEMA = """
@@ -63,12 +63,11 @@ def save(conn, name, r):
 
 
 def main():
-    ap = _batch.make_parser()
-    ap.add_argument("--artists-file", default="data/artists.txt")
-    args = ap.parse_args()
+    args = _batch.make_parser().parse_args()
 
     conn = _batch.connect(DB_PATH, SCHEMA)
-    artists = [a.strip() for a in open(args.artists_file) if a.strip()]
+    artists = [r[0] for r in conn.execute(
+        "SELECT DISTINCT artist FROM sessions WHERE status = 'ok' AND artist IS NOT NULL ORDER BY artist")]
     _batch.run(conn, "artists", "artist", artists, key_fn=lambda a: a, worker_fn=worker, save_fn=save,
                args=args, done_statuses=("ok", "not_found"), sleep_after=1.0)
     conn.close()
