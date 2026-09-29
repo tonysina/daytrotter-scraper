@@ -155,6 +155,7 @@
   .zip-btn:disabled { opacity: .55; cursor: default; }
 
   .track-row { display: flex; align-items: baseline; gap: 8px; padding: 4px 0; font-size: .86rem; }
+  .track-row.hit .track-title { background: color-mix(in srgb, var(--accent) 25%, transparent); border-radius: 3px; }
   .track-num { color: var(--text-dim); width: 1.4em; flex: none; }
   .track-title {
     flex: 1; min-width: 0; color: var(--text); text-decoration: underline;
@@ -182,7 +183,7 @@
       <div class="stats" id="statsBox">loading&hellip;</div>
     </div>
     <div class="searchbar">
-      <input type="text" id="q" placeholder="Search artist&hellip;" autocomplete="off">
+      <input type="text" id="q" placeholder="Search artist or track&hellip;" autocomplete="off">
       <button class="reset-btn" id="resetBtn">Reset</button>
     </div>
     <div class="azbar" id="azBar"></div>
@@ -287,6 +288,7 @@
         minY: years.length ? Math.min.apply(null, years) : null,
         maxY: years.length ? Math.max.apply(null, years) : null,
         totalTracks: totalTracks,
+        trackText: sessions.map(function (s) { return s.tr.map(function (t) { return t[0]; }).join("\n"); }).join("\n").toLowerCase(),
       };
     });
   }
@@ -372,8 +374,13 @@
       for (var i = 0; i < genres.length; i++) if (STATE.genres.has(genres[i])) { ok = true; break; }
       if (!ok) return false;
     }
-    if (STATE.q && g.a.toLowerCase().indexOf(STATE.q) === -1) return false;
+    if (STATE.q && g.a.toLowerCase().indexOf(STATE.q) === -1 && !trackHit(g)) return false;
     return true;
+  }
+
+  // Artist name didn't match but a track title did: expand and highlight it.
+  function trackHit(g) {
+    return STATE.q && g.a.toLowerCase().indexOf(STATE.q) === -1 && g.trackText.indexOf(STATE.q) !== -1;
   }
 
   function sortGroups(arr) {
@@ -522,7 +529,7 @@
 
     sess.tr.forEach(function (t, i) {
       var title = t[0], url = t[1];
-      var row = el("div", "track-row");
+      var row = el("div", "track-row" + (STATE.q && title.toLowerCase().indexOf(STATE.q) !== -1 ? " hit" : ""));
       var num = el("span", "track-num mono", String(i + 1));
       var status = el("span", "track-status");
       if (url) {
@@ -578,6 +585,7 @@
 
     li.appendChild(head);
     li.appendChild(body);
+    if (trackHit(g)) head.click();
     return li;
   }
 
